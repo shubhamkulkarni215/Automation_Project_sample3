@@ -1,8 +1,11 @@
 #!/bin/bash
 
+#Variables Declaration and Initialization
 name="Shubham"
 s3_bucket="upgrad-shubham"
 timestamp=$(date '+%d%m%Y-%H%M%S')
+
+#Part-2 : Hosting Web Server
 
 echo "Updating Pacakge"
 
@@ -10,8 +13,8 @@ sudo apt update -y
 
 echo "Checking whether Apache HTTP is installed ?"
 
-dpkg-query -W apache2 
-if [ $? -eq 0 ]; 
+dpkg-query -W apache2
+if [ $? -eq 0 ];
 then
  echo "Apache2 is installed."
 else
@@ -40,13 +43,49 @@ echo "service enabling..."
  systemctl enable apache2
 fi
 
+#part -2 : Archiving Logs
 
 cd /var/log/apache2
 
 find  -name "*.log" | tar -cvf /tmp/${name}-httpd-logs-${timestamp}.tar /var/log/apache2
+
+Size=$(du -sh /tmp/${name}-httpd-logs-${timestamp}.tar |  awk '{print $1}')
 
 echo "Tar file created and placed at desired location"
 
 aws s3 cp /tmp/${name}-httpd-logs-${timestamp}.tar  s3://${s3_bucket}/${name}-httpd-logs-${timestamp}.tar
 
 echo "Tar file is copied to desired S3 Bucket"
+
+
+#Part -3 : Bookkeeping
+
+Log_type="httpd-logs"
+Type="tar"
+
+FILE=/var/www/html/inventory.html
+
+if [[ -f "$FILE" ]];then
+  echo "$FILE exists"
+else
+cd /var/www/html
+touch inventory.html
+echo -e "Log Type \t &nbsp; &nbsp; Time Created \t\t &nbsp; &nbsp; &nbsp; Type \t &nbsp; Size" >> inventory.html
+echo "Inventory File created"
+fi
+
+echo -e "<br>${Log_type} \t &nbsp; ${timestamp} \t &nbsp; ${Type} \t &nbsp; ${Size}</br>"  >> /var/www/html/inventory.html
+
+echo "Meta data copied to inventory.html"
+
+#part -3 :Cron Job
+
+CRON=/etc/cron.d/automation
+
+if [[ -f "$CRON" ]];then
+echo "Cron Job file exists "
+else
+touch /etc/cron.d/automation
+echo "40 * 29 8 0-7 root /root/Automation_Project/automation.sh" >> /etc/cron.d/automation
+echo "CRON File created"
+fi
